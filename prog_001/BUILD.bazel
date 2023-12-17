@@ -1,0 +1,23 @@
+load("@rules_python//python:defs.bzl", "py_binary")
+
+py_binary(
+    name = "main",
+    srcs = ["main.py"],
+)
+
+filegroup(
+    name = "main_zzipp",
+    srcs = [":main"],
+    output_group = "python_zip_file",
+)
+
+# genrule(
+#     name = "echo_py",
+# outs = [],
+# )
+
+cc_binary(
+    name = "bjarne",
+    srcs = ["bjarne.cpp"],
+    linkopts = ["-pthread"],
+)
