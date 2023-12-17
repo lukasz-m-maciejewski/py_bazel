@@ -1,1 +1,2 @@
+common --action_env=PATH="/bin:/usr/bin"
 build --crosstool_top=//tools/cpp:toolchain --host_cpu=x86_64 --cpu=x86_64

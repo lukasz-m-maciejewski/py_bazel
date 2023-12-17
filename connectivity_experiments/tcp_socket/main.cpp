@@ -16,7 +16,7 @@
 #include <ratio>
 #include <thread>
 
-#include "thread_pool/thread_pool.hpp"
+#include "third_party/thread_pool/thread_pool.hpp"
 
 std::mutex out_mutex;
 
@@ -128,7 +128,6 @@ void server_main() {
         }
 
         server_print("another iteration");
-
       }
 
       server_print("closing new_fd");
