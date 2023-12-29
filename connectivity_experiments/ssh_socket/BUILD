@@ -50,5 +50,15 @@ cc_library(
     hdrs = ["client_main.hpp"],
     deps = [
         ":client_print",
+        "//sys:libssh",
+    ],
+)
+
+cc_library(
+    name = "ssh",
+    hdrs = ["ssh.hpp"],
+    deps = [
+        "//sys:libssh",
+        "@fmt",
     ],
 )

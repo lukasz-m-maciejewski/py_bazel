@@ -61,7 +61,7 @@ void server_main() {
 
   sockaddr_in my_addr = [] {
     sockaddr_in addr{};
-    ;
+
     addr.sin_family = AF_INET;
     addr.sin_port = htons(MYPORT);
     addr.sin_addr.s_addr = INADDR_ANY;

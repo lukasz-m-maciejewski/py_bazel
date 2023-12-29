@@ -1,53 +1,46 @@
 #include "connectivity_experiments/ssh_socket/client_main.hpp"
 
-#include <netdb.h>
-#include <netinet/in.h>
-#include <stdio.h>
-#include <sys/socket.h>
+#include <libssh/libssh.h>
+#include <libssh/libssh_version.h>
+
+#include "connectivity_experiments/ssh_socket/ssh.hpp"
 
 #include <array>
+#include <stdexcept>
+#include <string_view>
 
 #include "connectivity_experiments/ssh_socket/client_print.hpp"
 
-void client_main() {
+void client_main_inner() {
   client_print("client lives");
-  constexpr auto PORT = 3490;
-  hostent* he = gethostbyname("localhost");
+  ssh::Session session{"localhost", 3491};
 
-  if (he == nullptr) {
-    perror("gethostbyname");
-    return;
+  session.connect();
+
+  session.verify_host();
+
+  session.userauth("");
+
+  {
+    auto channel = session.make_channel();
+
+    channel.open_session();
+
+    std::string const msg = "Howdy Partner!\n";
+    channel.write(msg);
+
+    std::string const resp = channel.read();
+
+    channel.close();
   }
 
-  auto sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  if (sockfd == -1) {
-    perror("socket");
-    return;
+  session.disconnect();
+}
+
+void client_main() {
+  try {
+    client_main_inner();
+  } catch (ssh::Error const& e) {
+    client_print("Exception caught: {}", e.what());
   }
-
-  sockaddr_in their_addr;
-  their_addr.sin_family = AF_INET;
-  their_addr.sin_port = htons(PORT);
-  their_addr.sin_addr = *reinterpret_cast<in_addr*>(he->h_addr);
-  their_addr.sin_addr = {};
-
-  auto const connect_res = connect(
-      sockfd, reinterpret_cast<sockaddr*>(&their_addr), sizeof(sockaddr));
-  if (connect_res == -1) {
-    perror("client connect");
-    return;
-  }
-
-  std::string const msg = "Howdy Partner!\n";
-  send(sockfd, msg.data(), msg.size(), 0);
-
-  constexpr auto buf_size = 100;
-  std::array<char, buf_size> buffer = {'\0'};
-  recv(sockfd, buffer.data(), buf_size - 1, 0);
-  client_print("received: {}", buffer.data());
-
-  client_print("closing sockfd");
-  close(sockfd);
-
-  client_print("done");
 }
