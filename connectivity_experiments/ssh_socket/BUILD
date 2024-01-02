@@ -40,6 +40,7 @@ cc_library(
     hdrs = ["server_main.hpp"],
     deps = [
         ":server_print",
+        ":ssh",
         "//third_party/thread_pool",
     ],
 )
@@ -50,12 +51,14 @@ cc_library(
     hdrs = ["client_main.hpp"],
     deps = [
         ":client_print",
+        ":ssh",
         "//sys:libssh",
     ],
 )
 
 cc_library(
     name = "ssh",
+    srcs = ["ssh.cpp"],
     hdrs = ["ssh.hpp"],
     deps = [
         "//sys:libssh",

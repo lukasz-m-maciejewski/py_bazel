@@ -21,11 +21,12 @@ void server_main_inner() {
   BS::thread_pool pool(10);
 
   while (server_running.load()) {
-    auto session = bind.accept();
+    auto session_raw = bind.accept();
+    auto session = std::make_shared<ssh::Session>(std::move(session_raw));
 
     pool.push_task([session = std::move(session)] {
 
-    })
+    });
   }
 
   server_print("done");

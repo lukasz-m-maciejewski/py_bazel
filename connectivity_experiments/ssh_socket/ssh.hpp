@@ -46,7 +46,7 @@ class Channel {
 
   void write(std::string_view msg) {
     auto numWrites = ssh_channel_write(handle_, msg.data(), msg.size());
-    if (numWrites != msg.size()) {
+    if (static_cast<std::size_t>(numWrites) != msg.size()) {
       throw Error(fmt::format(
           "ssh_channel_write numWrites mismatch - expected:{} actual:{}",
           msg.size(), numWrites));
@@ -193,8 +193,7 @@ class Bind final {
   void listen() {
     auto const rc = ssh_bind_listen(handle_);
     if (rc < 0) {
-      throw Error(
-          fmt::format("ssh_bind_listen: {}", ssh_get_error(handle_)));
+      throw Error(fmt::format("ssh_bind_listen: {}", ssh_get_error(handle_)));
     }
   }
 
@@ -212,6 +211,19 @@ class Bind final {
 
     return Session{session};
   }
+};
+
+class Event final {
+  ssh_event handle_;
+
+ public:
+  Event() : handle_{ssh_event_new()} {
+    if (handle_ == nullptr) {
+      throw Error("Could not create polling context");
+    }
+  }
+
+  ~Event() { ssh_event_free(handle_); }
 };
 
 }  // namespace ssh
