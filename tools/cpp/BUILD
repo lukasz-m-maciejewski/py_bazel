@@ -72,7 +72,7 @@ cc_toolchain_config(
         "/usr/include/x86_64-linux-gnu/c++/13",
         "/usr/include/c++/13/backward",
     ],
-    cxx_flags = ["-std=c++23"],
+    cxx_flags = ["-std=gnu++2b"],
     dbg_compile_flags = ["-g"],
     host_system_name = "local",
     link_flags = [
