@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fmt/core.h>
+#include <libssh/callbacks.h>
 #include <libssh/libssh.h>
 #include <libssh/server.h>
 
@@ -162,6 +163,14 @@ class Session final {
   void disconnect() { ssh_disconnect(handle_); }
 
   ~Session() { ssh_free(handle_); }
+
+  void set_auth_methods(int auth_methods) {
+    ssh_set_auth_methods(handle_, auth_methods);
+  }
+
+  void set_server_callbacks(::ssh_server_callbacks_struct* callbacks) {
+    ssh_set_server_callbacks(handle_, callbacks);
+  }
 };
 
 class Bind final {
@@ -211,15 +220,75 @@ class Bind final {
 
     return Session{session};
   }
+
+
 };
 
 class Event final {
   ssh_event handle_;
 
+  struct EventData {
+    ssh_channel channel = nullptr;
+    bool authenticated = false;
+    int auth_attempts = 0;
+  };
+
+  EventData data_;
+
  public:
   Event() : handle_{ssh_event_new()} {
     if (handle_ == nullptr) {
       throw Error("Could not create polling context");
+    }
+  }
+
+  Event(Event const&) = delete;
+  auto operator=(Event const&) -> Event& = delete;
+  Event(Event&&) = default;
+  auto operator=(Event&&) -> Event& = default;
+
+  static ssh_channel channel_open_cb(ssh_session session, void* userdata) {
+    auto data = static_cast<EventData*>(userdata);
+    data->channel = ssh_channel_new(session);
+    return data->channel;
+  }
+
+  static int auth_password_cb(ssh_session session, char const* user,
+                              char const* passwd, void* userdata) {
+    auto data = static_cast<EventData*>(userdata);
+    std::string_view const password{passwd};
+    if (password == "") {
+      data->authenticated = true;
+      return SSH_AUTH_SUCCESS;
+    }
+
+    data->auth_attempts += 1;
+    return SSH_AUTH_DENIED;
+  }
+
+  ::ssh_channel_callbacks_struct make_channel_callbacks() { return {}; }
+
+  ::ssh_server_callbacks_struct make_server_callbacks() {
+    ::ssh_server_callbacks_struct callbacks{
+        .userdata = static_cast<void*>(std::addressof(data_)),
+        .auth_password_function = std::addressof(auth_password_cb)),
+        .channel_open_request_session_function =
+            std::addressof(channel_open_cb),
+    };
+
+    ssh_callbacks_init(std::addressof(callbacks));
+    return callbacks;
+  }
+
+  void handle_session(Session& session) {
+    auto server_cb = make_server_callbacks();
+
+    session.set_auth_methods(SSH_AUTH_METHOD_PASSWORD);
+    session.set_server_callbacks(&server_cb);
+
+    auto rc = ssh_event_add_session(handle_, session.handle_);
+    if (rc != SSH_OK) {
+      throw Error("ssh_event_add_session");
     }
   }
 

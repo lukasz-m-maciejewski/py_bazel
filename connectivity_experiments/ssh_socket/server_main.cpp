@@ -25,7 +25,11 @@ void server_main_inner() {
     auto session = std::make_shared<ssh::Session>(std::move(session_raw));
 
     pool.push_task([session = std::move(session)] {
+      ssh::Event event{};
 
+      event.handle_session(*session);
+
+      session->disconnect();
     });
   }
 
