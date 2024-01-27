@@ -9,6 +9,8 @@
 #include <stdexcept>
 #include <string>
 
+#include "connectivity_experiments/ssh_socket/server_print.hpp"
+
 namespace ssh {
 
 class Error : public std::runtime_error {
@@ -69,11 +71,13 @@ class Channel {
 };
 
 class Bind;
+class Event;
 
 class Session final {
   ssh_session handle_;
 
   friend class Bind;
+  friend class Event;
 
   Session(ssh_session handle) : handle_{handle} {}
 
@@ -220,8 +224,6 @@ class Bind final {
 
     return Session{session};
   }
-
-
 };
 
 class Event final {
@@ -266,12 +268,34 @@ class Event final {
     return SSH_AUTH_DENIED;
   }
 
-  ::ssh_channel_callbacks_struct make_channel_callbacks() { return {}; }
+  static int data_function(ssh_session session, ssh_channel channel, void* data,
+                           uint32_t len, int is_stderr, void* userdata) {
+    server_print("data function called");
+    return -1;
+  }
+
+  static int pty_request(ssh_session session, ssh_channel channel,
+                         const char* term, int cols, int rows, int py, int px,
+                         void* userdata) {
+    server_print("pty_request function called");
+    return -1;
+
+  }
+
+  ::ssh_channel_callbacks_struct make_channel_callbacks() {
+    return {.userdata = nullptr,
+            .channel_data_function = std::addressof(data_function),
+            .channel_pty_request_function = pty_request,
+            .channel_shell_request_function = shell_request,
+            .channel_pty_window_change_function = pty_resize,
+            .channel_exec_request_function = exec_request,
+            .channel_subsystem_request_function = subsystem_request};
+  }
 
   ::ssh_server_callbacks_struct make_server_callbacks() {
     ::ssh_server_callbacks_struct callbacks{
         .userdata = static_cast<void*>(std::addressof(data_)),
-        .auth_password_function = std::addressof(auth_password_cb)),
+        .auth_password_function = std::addressof(auth_password_cb),
         .channel_open_request_session_function =
             std::addressof(channel_open_cb),
     };
